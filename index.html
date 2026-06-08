@@ -132,7 +132,7 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .drive-link:hover{text-decoration:underline}
 
 /* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(4px)}
 .modal-overlay.open{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5)}
 .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
@@ -168,8 +168,22 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo">MCampos</div>
-    <div class="login-title">Gestão Empresarial</div>
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px">
+      <svg width="70" height="70" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:10px">
+        <defs>
+          <linearGradient id="sg" x1="50" y1="8" x2="60" y2="92" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#7c8494"/>
+            <stop offset="100%" stop-color="#3a404e"/>
+          </linearGradient>
+        </defs>
+        <polygon points="50,6 90,26 84,76 50,94 16,76 10,26" fill="url(#sg)"/>
+        <polygon points="50,6 90,26 50,36" fill="#9aa0b0" opacity="0.4"/>
+        <polygon points="16,76 50,94 50,60" fill="#1e2330" opacity="0.3"/>
+        <text x="50" y="63" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="30" fill="white">M</text>
+      </svg>
+      <div style="font-size:20px;font-weight:700;letter-spacing:4px;color:#c8cdd8">M CAMPOS</div>
+      <div style="font-size:9px;font-weight:400;letter-spacing:6px;color:#6b7280;margin-top:3px">EMPREITEIRA</div>
+    </div>
     <div class="login-sub">Selecione seu perfil para continuar</div>
     <div class="login-users" id="login-users"></div>
     <div style="margin-bottom:12px">
@@ -185,7 +199,18 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 <!-- APP -->
 <div id="app">
   <div class="topbar">
-    <div class="topbar-logo">MCampos</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="tg" x1="50" y1="6" x2="60" y2="94" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#7c8494"/><stop offset="100%" stop-color="#3a404e"/></linearGradient></defs>
+        <polygon points="50,6 90,26 84,76 50,94 16,76 10,26" fill="url(#tg)"/>
+        <polygon points="50,6 90,26 50,36" fill="#9aa0b0" opacity="0.4"/>
+        <text x="50" y="63" text-anchor="middle" font-family="Arial,sans-serif" font-weight="700" font-size="30" fill="white">M</text>
+      </svg>
+      <div style="display:flex;flex-direction:column;line-height:1.1">
+        <span style="font-size:12px;font-weight:700;letter-spacing:2px;color:#c8cdd8">M CAMPOS</span>
+        <span style="font-size:8px;letter-spacing:3px;color:#6b7280">EMPREITEIRA</span>
+      </div>
+    </div>
     <div class="topbar-sep"></div>
     <div class="topbar-title" id="topbar-title">Dashboard</div>
     <div class="topbar-sync">
@@ -249,9 +274,7 @@ function setSyncing(on) {
 // ─── USERS (localStorage) ───
 const DEFAULT_USERS = [
   { id:'u1', name:'Manuel', role:'Diretor', color:'#e8a020', initials:'MC' },
-  { id:'u2', name:'Gestão', role:'Operacional', color:'#3dd68c', initials:'GO' },
-  { id:'u3', name:'Engenharia', role:'Engenharia', color:'#5b9cf6', initials:'EN' },
-  { id:'u4', name:'Financeiro', role:'Financeiro', color:'#a78bfa', initials:'FI' },
+  { id:'u2', name:'Daniella', role:'Diretora Financeira', color:'#f05c5c', initials:'DA' },
 ];
 function getUsers(){ return JSON.parse(localStorage.getItem('mc-users')||JSON.stringify(DEFAULT_USERS)); }
 function saveUsers(u){ localStorage.setItem('mc-users', JSON.stringify(u)); }
