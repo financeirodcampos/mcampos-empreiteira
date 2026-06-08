@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCampos — Gestão Empresarial</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --bg:#0d0f14; --bg2:#13161e; --bg3:#1a1e28; --bg4:#222636;
+  --border:#2a2f3f; --border2:#3a4158;
+  --accent:#e8a020; --accent2:#f5b840; --accent-dim:rgba(232,160,32,0.13);
+  --text:#e8eaf0; --text2:#9aa0b8; --text3:#5a6080;
+  --green:#3dd68c; --green-dim:rgba(61,214,140,0.1);
+  --red:#f05c5c; --red-dim:rgba(240,92,92,0.1);
+  --blue:#5b9cf6; --blue-dim:rgba(91,156,246,0.1);
+  --purple:#a78bfa;
+  --radius:10px; --radius-sm:6px;
+  --sidebar-w:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:9999}
+.login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:18px;padding:48px 40px;width:400px;text-align:center}
+.login-logo{font-size:11px;font-weight:700;letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
+.login-title{font-size:24px;font-weight:700;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--text3);margin-bottom:32px}
+.login-users{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.login-btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:16px 12px;cursor:pointer;transition:all .2s;color:var(--text);display:flex;flex-direction:column;align-items:center;gap:8px}
+.login-btn:hover{border-color:var(--accent);background:var(--accent-dim)}
+.login-av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin:0 auto}
+.login-name{font-size:12px;font-weight:600}
+.login-role{font-size:10px;color:var(--text3)}
+.sync-bar{display:flex;align-items:center;gap:6px;justify-content:center;font-size:11px;color:var(--text3);margin-top:16px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.sync-dot.off{background:var(--text3)}
+
+/* APP SHELL */
+#app{display:none;height:100vh;overflow:hidden}
+.topbar{height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;position:fixed;top:0;left:0;right:0;z-index:100}
+.topbar-logo{font-size:13px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase}
+.topbar-sep{width:1px;height:18px;background:var(--border2)}
+.topbar-title{font-size:13px;color:var(--text2);flex:1}
+.topbar-sync{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3)}
+.topbar-sync .dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.topbar-sync .dot.syncing{background:var(--accent);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.topbar-user{display:flex;align-items:center;gap:8px}
+.av-sm{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer}
+.topbar-logout{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'Sora',sans-serif;padding:4px 8px;border-radius:4px}
+.topbar-logout:hover{color:var(--red)}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:52px;left:0;bottom:0;width:var(--sidebar-w);background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;z-index:50;padding:12px 0}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.sidebar-section-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:12px 16px 4px}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;font-size:12px;color:var(--text2);border-radius:0;transition:all .15s}
+.sidebar-item:hover{color:var(--text);background:var(--bg3)}
+.sidebar-item.active{color:var(--accent);background:var(--accent-dim)}
+.sidebar-sep{height:1px;background:var(--border);margin:6px 12px}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);margin-top:52px;height:calc(100vh - 52px);overflow-y:auto;background:var(--bg)}
+.main::-webkit-scrollbar{width:4px}
+.main::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.page{padding:28px 32px;max-width:1200px}
+.page-header{margin-bottom:24px}
+.page-header h1{font-size:22px;font-weight:700;margin-bottom:4px}
+.page-header p{font-size:13px;color:var(--text3)}
+
+/* CARDS */
+.cards{display:grid;gap:16px;margin-bottom:24px}
+.cards-4{grid-template-columns:repeat(4,1fr)}
+.cards-3{grid-template-columns:repeat(3,1fr)}
+.cards-2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.card-val{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.card-sub{font-size:11px;color:var(--text3)}
+.accent{color:var(--accent)}
+.green{color:var(--green)}
+.blue{color:var(--blue)}
+.red{color:var(--red)}
+.card-accent{border-color:rgba(232,160,32,.3);background:linear-gradient(135deg,var(--bg2),rgba(232,160,32,.05))}
+.card-green{border-color:rgba(61,214,140,.3);background:linear-gradient(135deg,var(--bg2),rgba(61,214,140,.05))}
+.card-blue{border-color:rgba(91,156,246,.3);background:linear-gradient(135deg,var(--bg2),rgba(91,156,246,.05))}
+.card-red{border-color:rgba(240,92,92,.3);background:linear-gradient(135deg,var(--bg2),rgba(240,92,92,.05))}
+
+/* BLOCK */
+.block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;overflow:hidden}
+.block-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.block-title{font-size:13px;font-weight:600}
+.section-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:12px;margin-top:8px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 14px;text-align:left;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3);color:var(--text)}
+.empty-row td{text-align:center;color:var(--text3);padding:32px;font-size:12px}
+
+/* STATUS BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge-green{background:var(--green-dim);color:var(--green)}
+.badge-red{background:var(--red-dim);color:var(--red)}
+.badge-blue{background:var(--blue-dim);color:var(--blue)}
+.badge-yellow{background:rgba(245,200,66,.1);color:#f5c842}
+.badge-purple{background:rgba(167,139,250,.1);color:var(--purple)}
+.badge-gray{background:var(--bg3);color:var(--text3)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius-sm);border:none;cursor:pointer;font-size:12px;font-family:'Sora',sans-serif;font-weight:500;transition:all .15s}
+.btn-accent{background:var(--accent);color:#000}
+.btn-accent:hover{background:var(--accent2)}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.btn-red{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,92,92,.2)}
+.btn-red:hover{background:rgba(240,92,92,.2)}
+.btn-sm{padding:4px 8px;font-size:11px}
+.btn-icon{width:28px;height:28px;padding:0;justify-content:center;font-size:14px}
+
+/* DRIVE LINK */
+.drive-link{color:var(--blue);font-size:11px;text-decoration:none}
+.drive-link:hover{text-decoration:underline}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-title{font-size:15px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;line-height:1}
+.modal-body{padding:20px 24px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--border)}
+
+/* FORM */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select,.field textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:9px 12px;color:var(--text);font-size:12px;font-family:'Sora',sans-serif;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:70px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-size:13px;gap:10px}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* FLOW */
+.flow-item{display:flex;align-items:flex-start;gap:14px;margin-bottom:0}
+.flow-dot{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.flow-connector{width:2px;height:36px;background:var(--border2);margin-left:21px}
+.flow-content h4{font-size:13px;font-weight:600;margin-bottom:3px}
+.flow-content p{font-size:11px;color:var(--text3);line-height:1.6}
+.flow-content ul{font-size:11px;color:var(--text3);padding-left:14px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">MCampos</div>
+    <div class="login-title">Gestão Empresarial</div>
+    <div class="login-sub">Selecione seu perfil para continuar</div>
+    <div class="login-users" id="login-users"></div>
+    <div style="margin-bottom:12px">
+      <button class="btn btn-ghost" style="width:100%;justify-content:center;font-size:11px" onclick="openAddUser()">+ Adicionar usuário</button>
+    </div>
+    <div class="sync-bar">
+      <div class="sync-dot" id="sync-dot-login"></div>
+      <span id="sync-label-login">Conectando ao Firebase...</span>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">MCampos</div>
+    <div class="topbar-sep"></div>
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-sync">
+      <div class="dot" id="sync-dot"></div>
+      <span id="sync-label">Sincronizado</span>
+    </div>
+    <div class="topbar-user">
+      <div class="av-sm" id="topbar-av"></div>
+      <span style="font-size:11px;color:var(--text2)" id="topbar-name"></span>
+      <button class="topbar-logout" onclick="logout()">Sair</button>
+    </div>
+  </div>
+  <div class="sidebar" id="sidebar"></div>
+  <div class="main" id="main"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-accent" id="modal-save">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── FIREBASE ───
+const firebaseConfig = {
+  apiKey: "AIzaSyBEzLkNWTL_dkZqG_kcw8O4NUwYwuGxblg",
+  authDomain: "mcampos-empreiteira.firebaseapp.com",
+  projectId: "mcampos-empreiteira",
+  storageBucket: "mcampos-empreiteira.firebasestorage.app",
+  messagingSenderId: "550100154344",
+  appId: "1:550100154344:web:94651651f4a7e36f23965d",
+  measurementId: "G-GWTTRL6TCY"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ─── STATE ───
+let currentUser = null;
+let modalSaveFn = null;
+let currentPage = 'dashboard';
+let unsubscribers = {};
+
+// ─── SYNC UI ───
+function setSyncing(on) {
+  const d = document.getElementById('sync-dot');
+  const l = document.getElementById('sync-label');
+  if (!d) return;
+  if (on) { d.classList.add('syncing'); l.textContent = 'Sincronizando...'; }
+  else { d.classList.remove('syncing'); l.textContent = 'Sincronizado'; }
+}
+
+// ─── USERS (localStorage) ───
+const DEFAULT_USERS = [
+  { id:'u1', name:'Manuel', role:'Diretor', color:'#e8a020', initials:'MC' },
+  { id:'u2', name:'Gestão', role:'Operacional', color:'#3dd68c', initials:'GO' },
+  { id:'u3', name:'Engenharia', role:'Engenharia', color:'#5b9cf6', initials:'EN' },
+  { id:'u4', name:'Financeiro', role:'Financeiro', color:'#a78bfa', initials:'FI' },
+];
+function getUsers(){ return JSON.parse(localStorage.getItem('mc-users')||JSON.stringify(DEFAULT_USERS)); }
+function saveUsers(u){ localStorage.setItem('mc-users', JSON.stringify(u)); }
+
+function renderLoginUsers() {
+  const users = getUsers();
+  document.getElementById('login-users').innerHTML = users.map(u => `
+    <div class="login-btn" onclick="login('${u.id}')">
+      <div class="login-av" style="background:${u.color}">${u.initials}</div>
+      <div class="login-name">${u.name}</div>
+      <div class="login-role">${u.role}</div>
+    </div>`).join('');
+}
+
+function login(uid) {
+  const users = getUsers();
+  currentUser = users.find(u => u.id === uid);
+  if (!currentUser) return;
+  localStorage.setItem('mc-current-user', uid);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbar-av').style.background = currentUser.color;
+  document.getElementById('topbar-av').textContent = currentUser.initials;
+  document.getElementById('topbar-name').textContent = currentUser.name;
+  renderSidebar();
+  navigate('dashboard');
+}
+
+function logout() {
+  currentUser = null;
+  localStorage.removeItem('mc-current-user');
+  Object.values(unsubscribers).forEach(fn => fn && fn());
+  unsubscribers = {};
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function openAddUser() {
+  showModal('Novo Usuário', `
+    <div class="field"><label>Nome</label><input id="nu-name" type="text" placeholder="Nome do usuário"></div>
+    <div class="field"><label>Cargo/Função</label><input id="nu-role" type="text" placeholder="Ex: Engenheiro, Financeiro..."></div>
+    <div class="field"><label>Iniciais (2-3 letras)</label><input id="nu-init" type="text" maxlength="3" placeholder="Ex: MC"></div>
+    <div class="field"><label>Cor</label><input id="nu-color" type="color" value="#e8a020" style="height:36px;padding:2px"></div>
+  `, () => {
+    const name = v('nu-name'), role = v('nu-role'), init = v('nu-init').toUpperCase(), color = v('nu-color');
+    if (!name || !init) return false;
+    const users = getUsers();
+    users.push({ id:'u'+Date.now(), name, role, color, initials:init });
+    saveUsers(users);
+    renderLoginUsers();
+    return true;
+  });
+}
+
+// ─── FIRESTORE HELPERS ───
+async function getCol(col) {
+  try {
+    const snap = await db.collection(col).orderBy('_ts','asc').get();
+    return snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+  } catch(e) {
+    return [];
+  }
+}
+
+async function addDoc(col, data) {
+  setSyncing(true);
+  try {
+    await db.collection(col).add({ ...data, _ts: Date.now(), _by: currentUser?.name || '' });
+  } catch(e) { console.error(e); }
+  setSyncing(false);
+}
+
+async function delDoc(col, id) {
+  setSyncing(true);
+  try { await db.collection(col).doc(id).delete(); } catch(e) { console.error(e); }
+  setSyncing(false);
+}
+
+// ─── NAVIGATION ───
+const MENU = [
+  { id:'dashboard', icon:'🏠', label:'Dashboard', top:true },
+  { sec:'Diretoria Executiva' },
+  { id:'dir-metas',      icon:'📊', label:'Metas & Indicadores' },
+  { id:'dir-financeiro', icon:'💹', label:'Planejamento Financeiro' },
+  { id:'dir-resultados', icon:'🎯', label:'Gestão de Resultados' },
+  { id:'dir-expansao',   icon:'🚀', label:'Expansão' },
+  { sec:'Administrativo' },
+  { id:'adm-docs',      icon:'📁', label:'Controle Documental' },
+  { id:'adm-contratos', icon:'📑', label:'Gestão de Contratos' },
+  { id:'adm-forn',      icon:'🤝', label:'Fornecedores' },
+  { sec:'Financeiro & Fiscal' },
+  { id:'fin-pagar',   icon:'💸', label:'Contas a Pagar' },
+  { id:'fin-receber', icon:'💰', label:'Contas a Receber' },
+  { id:'fin-fiscal',  icon:'🧾', label:'Fiscal / NF' },
+  { sec:'Gestão Operacional' },
+  { id:'op-equipes',   icon:'👷', label:'Cadastro de Equipes' },
+  { id:'op-precos',    icon:'💲', label:'Formação de Preços' },
+  { id:'op-producao',  icon:'📈', label:'Controle de Produção' },
+  { id:'op-indicadores',icon:'📉', label:'Indicadores Operacionais' },
+  { sec:'Engenharia' },
+  { id:'eng-obras',    icon:'🏗️', label:'Cadastro de Obras' },
+  { id:'eng-definicoes',icon:'📐', label:'Definições de Obra' },
+  { id:'eng-controle', icon:'🗂️', label:'Planejamento & Controle' },
+  { id:'fluxo',        icon:'🔄', label:'Fluxo Macro' },
+];
+
+function renderSidebar() {
+  let html = '';
+  MENU.forEach(item => {
+    if (item.sec) {
+      html += `<div class="sidebar-sep"></div><div class="sidebar-section-title">${item.sec}</div>`;
+    } else {
+      html += `<div class="sidebar-item ${item.id===currentPage?'active':''}" onclick="navigate('${item.id}')"><span>${item.icon}</span>${item.label}</div>`;
+    }
+  });
+  document.getElementById('sidebar').innerHTML = html;
+}
+
+function navigate(pid) {
+  currentPage = pid;
+  renderSidebar();
+  const item = MENU.find(m => m.id === pid);
+  document.getElementById('topbar-title').textContent = item ? item.label : '';
+  const main = document.getElementById('main');
+  main.innerHTML = `<div class="page"><div class="loading"><div class="spinner"></div> Carregando...</div></div>`;
+  buildPage(pid).then(html => { main.innerHTML = `<div class="page">${html}</div>`; });
+}
+
+// ─── MODAL ───
+function showModal(title, body, saveFn) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  modalSaveFn = saveFn;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-save').onclick = async () => {
+    const ok = await modalSaveFn();
+    if (ok !== false) { closeModal(); navigate(currentPage); }
+  };
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+
+// ─── HELPERS ───
+function v(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function driveCell(url) {
+  return url ? `<a href="${url}" target="_blank" class="drive-link">📎 Drive</a>` : '<span style="color:var(--text3)">—</span>';
+}
+const STATUS_OPTS = ['Em andamento','Concluído','Pendente','Cancelado','Aguardando','Planejado'];
+function badge(status) {
+  const map = { 'Em andamento':'blue','Concluído':'green','Pendente':'yellow','Cancelado':'red','Aguardando':'yellow','Planejado':'gray' };
+  const cls = map[status] || 'gray';
+  return `<span class="badge badge-${cls}">${status||'—'}</span>`;
+}
+function delBtn(col, id, pg) { return `<button class="btn btn-red btn-sm" onclick="delRow('${col}','${id}','${pg||currentPage}')">✕</button>`; }
+async function delRow(col, id, pg) { await delDoc(col, id); navigate(pg||currentPage); }
+function statusSelect(id,val='') {
+  return `<select id="${id}">${STATUS_OPTS.map(s=>`<option ${s===val?'selected':''}>${s}</option>`).join('')}</select>`;
+}
+
+// ─── PAGE BUILDER ───
+async function buildPage(pid) {
+  switch(pid) {
+    case 'dashboard':     return buildDashboard();
+    case 'dir-metas':     return buildTable('dir-metas','Metas & Indicadores','Acompanhamento de metas estratégicas',
+      ['Indicador','Meta','Realizado','Período','Status','Obs',''],
+      r=>`<td>${r.indicador||'—'}</td><td>${r.meta||'—'}</td><td>${r.realizado||'—'}</td><td>${r.periodo||'—'}</td><td>${badge(r.status)}</td><td>${r.obs||'—'}</td><td>${delBtn('dir-metas',r._id)}</td>`,
+      openMeta);
+    case 'dir-financeiro': return buildTable('dir-financeiro','Planejamento Financeiro','Receitas, despesas e projeções',
+      ['Categoria','Tipo','Valor (R$)','Mês','Status','Obs',''],
+      r=>`<td>${r.categoria||'—'}</td><td>${r.tipo||'—'}</td><td>${r.valor||'—'}</td><td>${r.mes||'—'}</td><td>${badge(r.status)}</td><td>${r.obs||'—'}</td><td>${delBtn('dir-financeiro',r._id)}</td>`,
+      openPlanejFin);
+    case 'dir-resultados': return buildTable('dir-resultados','Gestão de Resultados','Resultados por período',
+      ['Período','Faturamento','Custos','Resultado','Margem (%)','Obs',''],
+      r=>`<td>${r.periodo||'—'}</td><td>${r.faturamento||'—'}</td><td>${r.custos||'—'}</td><td>${r.resultado||'—'}</td><td>${r.margem||'—'}</td><td>${r.obs||'—'}</td><td>${delBtn('dir-resultados',r._id)}</td>`,
+      openResultado);
+    case 'dir-expansao':   return buildTable('dir-expansao','Expansão','Projetos de crescimento e novos mercados',
+      ['Projeto','Região','Investimento','Prazo','Status','Responsável','Obs',''],
+      r=>`<td>${r.projeto||'—'}</td><td>${r.regiao||'—'}</td><td>${r.investimento||'—'}</td><td>${r.prazo||'—'}</td><td>${badge(r.status)}</td><td>${r.resp||'—'}</td><td>${r.obs||'—'}</td><td>${delBtn('dir-expansao',r._id)}</td>`,
+      openExpansao);
+    case 'adm-docs':       return buildTable('adm-docs','Controle Documental','Documentos, certidões e arquivamento',
+      ['Documento','Tipo','Responsável','Vencimento','Status','Drive','Obs',''],
+      r=>`<td>${r.doc||'—'}</td><td>${r.tipo||'—'}</td><td>${r.resp||'—'}</td><td>${r.vencimento||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('adm-docs',r._id)}</td>`,
+      openDoc);
+    case 'adm-contratos':  return buildTable('adm-contratos','Gestão de Contratos','Contratos com clientes e fornecedores',
+      ['Contrato','Cliente/Forn.','Valor','Início','Vencimento','Status','Drive',''],
+      r=>`<td>${r.contrato||'—'}</td><td>${r.parte||'—'}</td><td>${r.valor||'—'}</td><td>${r.inicio||'—'}</td><td>${r.vencimento||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${delBtn('adm-contratos',r._id)}</td>`,
+      openContrato);
+    case 'adm-forn':       return buildTable('adm-forn','Fornecedores','Cadastro de fornecedores e parceiros',
+      ['Nome','CNPJ','Serviço','Contato','Status','Drive','Obs',''],
+      r=>`<td>${r.nome||'—'}</td><td>${r.cnpj||'—'}</td><td>${r.servico||'—'}</td><td>${r.contato||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('adm-forn',r._id)}</td>`,
+      openForn);
+    case 'fin-pagar':      return buildTable('fin-pagar','Contas a Pagar','Controle de pagamentos',
+      ['Descrição','Fornecedor','Valor','Vencimento','Status','Drive','Obs',''],
+      r=>`<td>${r.desc||'—'}</td><td>${r.forn||'—'}</td><td>${r.valor||'—'}</td><td>${r.vencimento||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('fin-pagar',r._id)}</td>`,
+      openPagar);
+    case 'fin-receber':    return buildTable('fin-receber','Contas a Receber','Controle de recebimentos',
+      ['Descrição','Cliente','Valor','Vencimento','Status','Drive','Obs',''],
+      r=>`<td>${r.desc||'—'}</td><td>${r.cliente||'—'}</td><td>${r.valor||'—'}</td><td>${r.vencimento||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('fin-receber',r._id)}</td>`,
+      openReceber);
+    case 'fin-fiscal':     return buildTable('fin-fiscal','Fiscal / Notas Fiscais','Emissão e controle de NFs',
+      ['NF','Cliente','Serviço','Valor','Emissão','Status','Drive',''],
+      r=>`<td>${r.nf||'—'}</td><td>${r.cliente||'—'}</td><td>${r.servico||'—'}</td><td>${r.valor||'—'}</td><td>${r.emissao||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${delBtn('fin-fiscal',r._id)}</td>`,
+      openFiscal);
+    case 'op-equipes':     return buildTable('op-equipes','Cadastro de Equipes','Equipes e funcionários operacionais',
+      ['Nome','Função','Equipe','Obra Atual','Status','Drive','Obs',''],
+      r=>`<td>${r.nome||'—'}</td><td>${r.funcao||'—'}</td><td>${r.equipe||'—'}</td><td>${r.obra||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('op-equipes',r._id)}</td>`,
+      openEquipe);
+    case 'op-precos':      return buildTable('op-precos','Formação de Preços','Preços por m², ML e Shaft',
+      ['Serviço','Tipo','Preço Unit.','Custo Unit.','Margem (%)','Obra','Obs',''],
+      r=>`<td>${r.servico||'—'}</td><td>${r.tipo||'—'}</td><td>${r.preco||'—'}</td><td>${r.custo||'—'}</td><td>${r.margem||'—'}</td><td>${r.obra||'—'}</td><td>${r.obs||'—'}</td><td>${delBtn('op-precos',r._id)}</td>`,
+      openPreco);
+    case 'op-producao':    return buildTable('op-producao','Controle de Produção','Produção diária, semanal e mensal',
+      ['Data','Equipe','Obra','Tipo','Quantidade','Unidade','Obs',''],
+      r=>`<td>${r.data||'—'}</td><td>${r.equipe||'—'}</td><td>${r.obra||'—'}</td><td>${r.tipo||'—'}</td><td>${r.qtd||'—'}</td><td>${r.unidade||'—'}</td><td>${r.obs||'—'}</td><td>${delBtn('op-producao',r._id)}</td>`,
+      openProducao);
+    case 'op-indicadores': return buildTable('op-indicadores','Indicadores Operacionais','Produtividade, custos e qualidade',
+      ['Indicador','Equipe','Valor','Unidade','Período','Meta','Obs',''],
+      r=>`<td>${r.indicador||'—'}</td><td>${r.equipe||'—'}</td><td>${r.valor||'—'}</td><td>${r.unidade||'—'}</td><td>${r.periodo||'—'}</td><td>${r.meta||'—'}</td><td>${r.obs||'—'}</td><td>${delBtn('op-indicadores',r._id)}</td>`,
+      openIndicador);
+    case 'eng-obras':      return buildTable('eng-obras','Cadastro de Obras','Obras ativas e concluídas',
+      ['Nome','Cliente','Endereço','Tipo','Início','Previsão','Status','Drive',''],
+      r=>`<td>${r.nome||'—'}</td><td>${r.cliente||'—'}</td><td>${r.endereco||'—'}</td><td>${r.tipo||'—'}</td><td>${r.inicio||'—'}</td><td>${r.previsao||'—'}</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${delBtn('eng-obras',r._id)}</td>`,
+      openObra);
+    case 'eng-definicoes': return buildTable('eng-definicoes','Definições de Obra','Escopo, quantitativos e memorial',
+      ['Obra','Disciplina','Escopo','Qtd','Unidade','Drive','Obs',''],
+      r=>`<td>${r.obra||'—'}</td><td>${r.disciplina||'—'}</td><td>${r.escopo||'—'}</td><td>${r.qtd||'—'}</td><td>${r.unidade||'—'}</td><td>${driveCell(r.drive)}</td><td>${r.obs||'—'}</td><td>${delBtn('eng-definicoes',r._id)}</td>`,
+      openDefinicao);
+    case 'eng-controle':   return buildTable('eng-controle','Planejamento & Controle','Cronograma e acompanhamento físico',
+      ['Obra','Etapa','Início','Fim','Físico (%)','Status','Drive',''],
+      r=>`<td>${r.obra||'—'}</td><td>${r.etapa||'—'}</td><td>${r.inicio||'—'}</td><td>${r.fim||'—'}</td><td>${r.fisico||'—'}%</td><td>${badge(r.status)}</td><td>${driveCell(r.drive)}</td><td>${delBtn('eng-controle',r._id)}</td>`,
+      openControle);
+    case 'fluxo':          return buildFluxo();
+    default:               return '<div class="loading">Página não encontrada</div>';
+  }
+}
+
+// ─── GENERIC TABLE BUILDER ───
+async function buildTable(col, title, subtitle, headers, rowFn, openFn) {
+  const rows = await getCol(col);
+  const thead = headers.map(h=>`<th>${h}</th>`).join('');
+  const tbody = rows.length
+    ? rows.map(r=>`<tr>${rowFn(r)}</tr>`).join('')
+    : `<tr class="empty-row"><td colspan="${headers.length}">Nenhum registro cadastrado.</td></tr>`;
+  return `
+    <div class="page-header"><h1>${title}</h1><p>${subtitle}</p></div>
+    <div class="block">
+      <div class="block-header">
+        <div class="block-title">${title}</div>
+        <button class="btn btn-accent btn-sm" onclick="(${openFn.toString()})()">+ Adicionar</button>
+      </div>
+      <div class="tbl-wrap"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>
+    </div>`;
+}
+
+// ─── DASHBOARD ───
+async function buildDashboard() {
+  const [obras,equipes,contratos,forn] = await Promise.all([
+    getCol('eng-obras'), getCol('op-equipes'), getCol('adm-contratos'), getCol('adm-forn')
+  ]);
+  return `
+  <div class="page-header"><h1>Dashboard</h1><p>Visão geral da MCampos Empreiteira</p></div>
+  <div class="cards cards-4">
+    <div class="card card-accent"><div class="card-label">Obras</div><div class="card-val accent">${obras.length}</div><div class="card-sub">cadastradas</div></div>
+    <div class="card card-blue"><div class="card-label">Equipes</div><div class="card-val blue">${equipes.length}</div><div class="card-sub">operacionais</div></div>
+    <div class="card card-green"><div class="card-label">Contratos</div><div class="card-val green">${contratos.length}</div><div class="card-sub">vigentes</div></div>
+    <div class="card"><div class="card-label">Fornecedores</div><div class="card-val">${forn.length}</div><div class="card-sub">cadastrados</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="block">
+      <div class="block-header"><div class="block-title">⚡ Acesso Rápido</div></div>
+      <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${[['🏗️','Obras','eng-obras'],['👷','Equipes','op-equipes'],['💸','A Pagar','fin-pagar'],['💰','A Receber','fin-receber'],['📑','Contratos','adm-contratos'],['📊','Metas','dir-metas']].map(([ic,lb,id])=>`<button class="btn btn-ghost" style="justify-content:flex-start" onclick="navigate('${id}')">${ic} ${lb}</button>`).join('')}
+      </div>
+    </div>
+    <div class="block">
+      <div class="block-header"><div class="block-title">🔄 Fluxo Operacional</div></div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+        ${[['🏗️','Engenharia','Define escopos','#5b9cf6'],['📑','Administrativo','Contratos e docs','#a78bfa'],['👷','Operacional','Equipes e produção','#e8a020'],['💰','Financeiro','Pagar e receber','#3dd68c'],['🎯','Diretoria','Indicadores e metas','#f05c5c']].map(([ic,n,d,c])=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:8px;border-radius:6px;background:var(--bg3)">
+            <div style="width:32px;height:32px;border-radius:50%;background:${c}22;color:${c};display:flex;align-items:center;justify-content:center">${ic}</div>
+            <div><div style="font-size:12px;font-weight:600;color:${c}">${n}</div><div style="font-size:11px;color:var(--text3)">${d}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── FLUXO MACRO ───
+function buildFluxo() {
+  const steps = [
+    { area:'Engenharia', icon:'🏗️', color:'#5b9cf6', items:['Define escopo da obra','Quantitativos','Disciplinas: Drywall, Forros, Shafts, Acústica'] },
+    { area:'Administrativo', icon:'📑', color:'#a78bfa', items:['Formaliza contratos com clientes','Gestão documental','Aditivos e controle de vigência'] },
+    { area:'Gestão Operacional', icon:'👷', color:'#e8a020', items:['Precifica (m², ML, Shaft)','Planeja equipes','Controla produção diária/semanal'] },
+    { area:'Financeiro & Fiscal', icon:'💰', color:'#3dd68c', items:['Paga fornecedores e folha','Recebe medições e faturas','Emite notas fiscais'] },
+    { area:'Diretoria', icon:'🎯', color:'#f05c5c', items:['Acompanha indicadores e metas','Gestão de resultados','Planejamento estratégico'] },
+  ];
+  return `
+  <div class="page-header"><h1>Fluxo Macro da Empresa</h1><p>Ciclo operacional completo da MCampos Empreiteira</p></div>
+  <div style="max-width:560px">
+    ${steps.map((s,i)=>`
+      <div class="flow-item">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div class="flow-dot" style="background:${s.color}22;color:${s.color};border:2px solid ${s.color}">${s.icon}</div>
+          ${i<steps.length-1?`<div class="flow-connector"></div>`:''}
+        </div>
+        <div class="block" style="flex:1;margin-left:14px;${i<steps.length-1?'margin-bottom:0':''}">
+          <div style="padding:14px 18px">
+            <div style="font-size:13px;font-weight:600;color:${s.color};margin-bottom:6px">${s.area}</div>
+            <ul style="font-size:12px;color:var(--text3);padding-left:16px;line-height:1.8">${s.items.map(i=>`<li>${i}</li>`).join('')}</ul>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+// ─── OPEN MODAL FUNCTIONS ───
+function openMeta() {
+  showModal('Nova Meta', `
+    <div class="field"><label>Indicador</label><input id="m-ind" type="text" placeholder="Ex: Faturamento mensal"></div>
+    <div class="field-row">
+      <div class="field"><label>Meta</label><input id="m-meta" type="text" placeholder="Valor alvo"></div>
+      <div class="field"><label>Realizado</label><input id="m-real" type="text" placeholder="Valor atual"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Período</label><input id="m-per" type="month"></div>
+      <div class="field"><label>Status</label>${statusSelect('m-sts')}</div>
+    </div>
+    <div class="field"><label>Observação</label><textarea id="m-obs"></textarea></div>
+  `, async () => {
+    await addDoc('dir-metas', { indicador:v('m-ind'), meta:v('m-meta'), realizado:v('m-real'), periodo:v('m-per'), status:v('m-sts'), obs:v('m-obs') });
+    return true;
+  });
+}
+
+function openPlanejFin() {
+  showModal('Planejamento Financeiro', `
+    <div class="field-row">
+      <div class="field"><label>Categoria</label><input id="pf-cat" type="text" placeholder="Ex: Receita, Despesa..."></div>
+      <div class="field"><label>Tipo</label><select id="pf-tipo"><option>Receita</option><option>Despesa</option><option>Investimento</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Valor (R$)</label><input id="pf-val" type="text" placeholder="0,00"></div>
+      <div class="field"><label>Mês</label><input id="pf-mes" type="month"></div>
+    </div>
+    <div class="field"><label>Status</label>${statusSelect('pf-sts')}</div>
+    <div class="field"><label>Observação</label><textarea id="pf-obs"></textarea></div>
+  `, async () => {
+    await addDoc('dir-financeiro', { categoria:v('pf-cat'), tipo:v('pf-tipo'), valor:v('pf-val'), mes:v('pf-mes'), status:v('pf-sts'), obs:v('pf-obs') });
+    return true;
+  });
+}
+
+function openResultado() {
+  showModal('Resultado', `
+    <div class="field"><label>Período</label><input id="r-per" type="month"></div>
+    <div class="field-row">
+      <div class="field"><label>Faturamento (R$)</label><input id="r-fat" type="text" placeholder="0,00"></div>
+      <div class="field"><label>Custos (R$)</label><input id="r-cus" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Resultado (R$)</label><input id="r-res" type="text" placeholder="0,00"></div>
+      <div class="field"><label>Margem (%)</label><input id="r-mar" type="text" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Observação</label><textarea id="r-obs"></textarea></div>
+  `, async () => {
+    await addDoc('dir-resultados', { periodo:v('r-per'), faturamento:v('r-fat'), custos:v('r-cus'), resultado:v('r-res'), margem:v('r-mar'), obs:v('r-obs') });
+    return true;
+  });
+}
+
+function openExpansao() {
+  showModal('Projeto de Expansão', `
+    <div class="field"><label>Projeto</label><input id="ex-proj" type="text" placeholder="Nome do projeto"></div>
+    <div class="field-row">
+      <div class="field"><label>Região</label><input id="ex-reg" type="text" placeholder="Ex: São Paulo, Sul..."></div>
+      <div class="field"><label>Investimento (R$)</label><input id="ex-inv" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Prazo</label><input id="ex-prazo" type="month"></div>
+      <div class="field"><label>Status</label>${statusSelect('ex-sts')}</div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Responsável</label><input id="ex-resp" type="text"></div>
+    </div>
+    <div class="field"><label>Observação</label><textarea id="ex-obs"></textarea></div>
+  `, async () => {
+    await addDoc('dir-expansao', { projeto:v('ex-proj'), regiao:v('ex-reg'), investimento:v('ex-inv'), prazo:v('ex-prazo'), status:v('ex-sts'), resp:v('ex-resp'), obs:v('ex-obs') });
+    return true;
+  });
+}
+
+function openDoc() {
+  showModal('Novo Documento', `
+    <div class="field"><label>Documento</label><input id="d-doc" type="text" placeholder="Nome do documento"></div>
+    <div class="field-row">
+      <div class="field"><label>Tipo</label><select id="d-tipo"><option>Certidão</option><option>Contrato</option><option>Alvará</option><option>Habilitação</option><option>Outro</option></select></div>
+      <div class="field"><label>Responsável</label><input id="d-resp" type="text"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Vencimento</label><input id="d-venc" type="date"></div>
+      <div class="field"><label>Status</label>${statusSelect('d-sts')}</div>
+    </div>
+    <div class="field"><label>🔗 Link Google Drive</label><input id="d-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="d-obs"></textarea></div>
+  `, async () => {
+    await addDoc('adm-docs', { doc:v('d-doc'), tipo:v('d-tipo'), resp:v('d-resp'), vencimento:v('d-venc'), status:v('d-sts'), drive:v('d-drive'), obs:v('d-obs') });
+    return true;
+  });
+}
+
+function openContrato() {
+  showModal('Novo Contrato', `
+    <div class="field"><label>Nome do Contrato</label><input id="ct-nome" type="text" placeholder="Ex: Contrato Obra XYZ"></div>
+    <div class="field-row">
+      <div class="field"><label>Cliente / Fornecedor</label><input id="ct-parte" type="text"></div>
+      <div class="field"><label>Valor (R$)</label><input id="ct-val" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Início</label><input id="ct-ini" type="date"></div>
+      <div class="field"><label>Vencimento</label><input id="ct-venc" type="date"></div>
+    </div>
+    <div class="field"><label>Status</label>${statusSelect('ct-sts')}</div>
+    <div class="field"><label>🔗 Link Google Drive</label><input id="ct-drive" type="url" placeholder="https://drive.google.com/..."></div>
+  `, async () => {
+    await addDoc('adm-contratos', { contrato:v('ct-nome'), parte:v('ct-parte'), valor:v('ct-val'), inicio:v('ct-ini'), vencimento:v('ct-venc'), status:v('ct-sts'), drive:v('ct-drive') });
+    return true;
+  });
+}
+
+function openForn() {
+  showModal('Novo Fornecedor', `
+    <div class="field"><label>Nome / Razão Social</label><input id="f-nome" type="text"></div>
+    <div class="field-row">
+      <div class="field"><label>CNPJ</label><input id="f-cnpj" type="text" placeholder="00.000.000/0000-00"></div>
+      <div class="field"><label>Serviço / Produto</label><input id="f-serv" type="text"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Contato</label><input id="f-cont" type="text" placeholder="Telefone ou email"></div>
+      <div class="field"><label>Status</label>${statusSelect('f-sts','Em andamento')}</div>
+    </div>
+    <div class="field"><label>🔗 Link Google Drive</label><input id="f-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="f-obs"></textarea></div>
+  `, async () => {
+    await addDoc('adm-forn', { nome:v('f-nome'), cnpj:v('f-cnpj'), servico:v('f-serv'), contato:v('f-cont'), status:v('f-sts'), drive:v('f-drive'), obs:v('f-obs') });
+    return true;
+  });
+}
+
+function openPagar() {
+  showModal('Nova Conta a Pagar', `
+    <div class="field"><label>Descrição</label><input id="p-desc" type="text" placeholder="Ex: Pagamento fornecedor X"></div>
+    <div class="field-row">
+      <div class="field"><label>Fornecedor</label><input id="p-forn" type="text"></div>
+      <div class="field"><label>Valor (R$)</label><input id="p-val" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Vencimento</label><input id="p-venc" type="date"></div>
+      <div class="field"><label>Status</label>${statusSelect('p-sts','Pendente')}</div>
+    </div>
+    <div class="field"><label>🔗 Link Drive (NF/Boleto)</label><input id="p-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="p-obs"></textarea></div>
+  `, async () => {
+    await addDoc('fin-pagar', { desc:v('p-desc'), forn:v('p-forn'), valor:v('p-val'), vencimento:v('p-venc'), status:v('p-sts'), drive:v('p-drive'), obs:v('p-obs') });
+    return true;
+  });
+}
+
+function openReceber() {
+  showModal('Nova Conta a Receber', `
+    <div class="field"><label>Descrição</label><input id="rc-desc" type="text" placeholder="Ex: Medição obra X"></div>
+    <div class="field-row">
+      <div class="field"><label>Cliente</label><input id="rc-cli" type="text"></div>
+      <div class="field"><label>Valor (R$)</label><input id="rc-val" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Vencimento</label><input id="rc-venc" type="date"></div>
+      <div class="field"><label>Status</label>${statusSelect('rc-sts','Pendente')}</div>
+    </div>
+    <div class="field"><label>🔗 Link Drive</label><input id="rc-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="rc-obs"></textarea></div>
+  `, async () => {
+    await addDoc('fin-receber', { desc:v('rc-desc'), cliente:v('rc-cli'), valor:v('rc-val'), vencimento:v('rc-venc'), status:v('rc-sts'), drive:v('rc-drive'), obs:v('rc-obs') });
+    return true;
+  });
+}
+
+function openFiscal() {
+  showModal('Nova Nota Fiscal', `
+    <div class="field-row">
+      <div class="field"><label>Número NF</label><input id="nf-num" type="text" placeholder="00000"></div>
+      <div class="field"><label>Cliente</label><input id="nf-cli" type="text"></div>
+    </div>
+    <div class="field"><label>Serviço</label><input id="nf-serv" type="text" placeholder="Descrição do serviço"></div>
+    <div class="field-row">
+      <div class="field"><label>Valor (R$)</label><input id="nf-val" type="text" placeholder="0,00"></div>
+      <div class="field"><label>Emissão</label><input id="nf-emi" type="date"></div>
+    </div>
+    <div class="field"><label>Status</label>${statusSelect('nf-sts','Em andamento')}</div>
+    <div class="field"><label>🔗 Link Drive (NF)</label><input id="nf-drive" type="url" placeholder="https://drive.google.com/..."></div>
+  `, async () => {
+    await addDoc('fin-fiscal', { nf:v('nf-num'), cliente:v('nf-cli'), servico:v('nf-serv'), valor:v('nf-val'), emissao:v('nf-emi'), status:v('nf-sts'), drive:v('nf-drive') });
+    return true;
+  });
+}
+
+function openEquipe() {
+  showModal('Novo Membro / Equipe', `
+    <div class="field-row">
+      <div class="field"><label>Nome</label><input id="eq-nome" type="text"></div>
+      <div class="field"><label>Função</label><input id="eq-func" type="text" placeholder="Ex: Montador, Lider..."></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Equipe</label><input id="eq-eq" type="text" placeholder="Nome da equipe"></div>
+      <div class="field"><label>Obra Atual</label><input id="eq-obra" type="text"></div>
+    </div>
+    <div class="field"><label>Status</label>${statusSelect('eq-sts','Em andamento')}</div>
+    <div class="field"><label>🔗 Link Drive (Docs)</label><input id="eq-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="eq-obs"></textarea></div>
+  `, async () => {
+    await addDoc('op-equipes', { nome:v('eq-nome'), funcao:v('eq-func'), equipe:v('eq-eq'), obra:v('eq-obra'), status:v('eq-sts'), drive:v('eq-drive'), obs:v('eq-obs') });
+    return true;
+  });
+}
+
+function openPreco() {
+  showModal('Formação de Preço', `
+    <div class="field"><label>Serviço</label><input id="pr-serv" type="text" placeholder="Ex: Drywall, Forro, Shaft..."></div>
+    <div class="field-row">
+      <div class="field"><label>Tipo</label><select id="pr-tipo"><option>m²</option><option>ML</option><option>Shaft</option><option>Unidade</option><option>Outro</option></select></div>
+      <div class="field"><label>Obra</label><input id="pr-obra" type="text"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Preço Unitário (R$)</label><input id="pr-prec" type="text" placeholder="0,00"></div>
+      <div class="field"><label>Custo Unitário (R$)</label><input id="pr-cust" type="text" placeholder="0,00"></div>
+    </div>
+    <div class="field"><label>Margem (%)</label><input id="pr-mar" type="text" placeholder="0"></div>
+    <div class="field"><label>Observação</label><textarea id="pr-obs"></textarea></div>
+  `, async () => {
+    await addDoc('op-precos', { servico:v('pr-serv'), tipo:v('pr-tipo'), preco:v('pr-prec'), custo:v('pr-cust'), margem:v('pr-mar'), obra:v('pr-obra'), obs:v('pr-obs') });
+    return true;
+  });
+}
+
+function openProducao() {
+  showModal('Registro de Produção', `
+    <div class="field-row">
+      <div class="field"><label>Data</label><input id="prod-data" type="date"></div>
+      <div class="field"><label>Equipe</label><input id="prod-eq" type="text"></div>
+    </div>
+    <div class="field"><label>Obra</label><input id="prod-obra" type="text"></div>
+    <div class="field-row">
+      <div class="field"><label>Tipo</label><select id="prod-tipo"><option>Drywall</option><option>Forro</option><option>Shaft</option><option>Acústica</option><option>Outro</option></select></div>
+      <div class="field"><label>Quantidade</label><input id="prod-qtd" type="text" placeholder="0"></div>
+    </div>
+    <div class="field"><label>Unidade</label><select id="prod-uni"><option>m²</option><option>ML</option><option>Unidade</option><option>Shaft</option></select></div>
+    <div class="field"><label>Observação</label><textarea id="prod-obs"></textarea></div>
+  `, async () => {
+    await addDoc('op-producao', { data:v('prod-data'), equipe:v('prod-eq'), obra:v('prod-obra'), tipo:v('prod-tipo'), qtd:v('prod-qtd'), unidade:v('prod-uni'), obs:v('prod-obs') });
+    return true;
+  });
+}
+
+function openIndicador() {
+  showModal('Indicador Operacional', `
+    <div class="field"><label>Indicador</label><input id="in-ind" type="text" placeholder="Ex: Produtividade m²/dia"></div>
+    <div class="field-row">
+      <div class="field"><label>Equipe</label><input id="in-eq" type="text"></div>
+      <div class="field"><label>Período</label><input id="in-per" type="month"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Valor Realizado</label><input id="in-val" type="text" placeholder="0"></div>
+      <div class="field"><label>Unidade</label><input id="in-uni" type="text" placeholder="m², ML, %..."></div>
+    </div>
+    <div class="field"><label>Meta</label><input id="in-meta" type="text" placeholder="Valor alvo"></div>
+    <div class="field"><label>Observação</label><textarea id="in-obs"></textarea></div>
+  `, async () => {
+    await addDoc('op-indicadores', { indicador:v('in-ind'), equipe:v('in-eq'), periodo:v('in-per'), valor:v('in-val'), unidade:v('in-uni'), meta:v('in-meta'), obs:v('in-obs') });
+    return true;
+  });
+}
+
+function openObra() {
+  showModal('Nova Obra', `
+    <div class="field-row">
+      <div class="field"><label>Nome da Obra</label><input id="ob-nome" type="text" placeholder="Ex: Ed. São Paulo Torre A"></div>
+      <div class="field"><label>Cliente</label><input id="ob-cli" type="text"></div>
+    </div>
+    <div class="field"><label>Endereço</label><input id="ob-end" type="text" placeholder="Rua, número, cidade..."></div>
+    <div class="field-row">
+      <div class="field"><label>Tipo</label><select id="ob-tipo"><option>Drywall</option><option>Forros</option><option>Shafts</option><option>Acústica</option><option>Misto</option><option>Outro</option></select></div>
+      <div class="field"><label>Status</label>${statusSelect('ob-sts','Em andamento')}</div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Início</label><input id="ob-ini" type="date"></div>
+      <div class="field"><label>Previsão Término</label><input id="ob-prev" type="date"></div>
+    </div>
+    <div class="field"><label>🔗 Link Google Drive</label><input id="ob-drive" type="url" placeholder="https://drive.google.com/..."></div>
+  `, async () => {
+    await addDoc('eng-obras', { nome:v('ob-nome'), cliente:v('ob-cli'), endereco:v('ob-end'), tipo:v('ob-tipo'), status:v('ob-sts'), inicio:v('ob-ini'), previsao:v('ob-prev'), drive:v('ob-drive') });
+    return true;
+  });
+}
+
+function openDefinicao() {
+  showModal('Definição de Obra', `
+    <div class="field-row">
+      <div class="field"><label>Obra</label><input id="df-obra" type="text"></div>
+      <div class="field"><label>Disciplina</label><select id="df-disc"><option>Drywall</option><option>Forro</option><option>Shaft</option><option>Acústica</option><option>Outro</option></select></div>
+    </div>
+    <div class="field"><label>Escopo</label><textarea id="df-esc" placeholder="Descrição do escopo..."></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Quantidade</label><input id="df-qtd" type="text" placeholder="0"></div>
+      <div class="field"><label>Unidade</label><select id="df-uni"><option>m²</option><option>ML</option><option>Unidade</option><option>Shaft</option></select></div>
+    </div>
+    <div class="field"><label>🔗 Link Google Drive (Memorial)</label><input id="df-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="df-obs"></textarea></div>
+  `, async () => {
+    await addDoc('eng-definicoes', { obra:v('df-obra'), disciplina:v('df-disc'), escopo:v('df-esc'), qtd:v('df-qtd'), unidade:v('df-uni'), drive:v('df-drive'), obs:v('df-obs') });
+    return true;
+  });
+}
+
+function openControle() {
+  showModal('Planejamento & Controle', `
+    <div class="field-row">
+      <div class="field"><label>Obra</label><input id="cr-obra" type="text"></div>
+      <div class="field"><label>Etapa</label><input id="cr-et" type="text" placeholder="Ex: Fundação, Estrutura..."></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Início Previsto</label><input id="cr-ini" type="date"></div>
+      <div class="field"><label>Fim Previsto</label><input id="cr-fim" type="date"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Avanço Físico (%)</label><input id="cr-fis" type="number" min="0" max="100" placeholder="0"></div>
+      <div class="field"><label>Status</label>${statusSelect('cr-sts','Em andamento')}</div>
+    </div>
+    <div class="field"><label>🔗 Link Drive (Cronograma)</label><input id="cr-drive" type="url" placeholder="https://drive.google.com/..."></div>
+    <div class="field"><label>Observação</label><textarea id="cr-obs"></textarea></div>
+  `, async () => {
+    await addDoc('eng-controle', { obra:v('cr-obra'), etapa:v('cr-et'), inicio:v('cr-ini'), fim:v('cr-fim'), fisico:v('cr-fis'), status:v('cr-sts'), drive:v('cr-drive'), obs:v('cr-obs') });
+    return true;
+  });
+}
+
+// ─── INIT ───
+renderLoginUsers();
+
+// Check Firebase connection
+db.collection('_ping').add({ ts: Date.now() }).then(() => {
+  db.collection('_ping').where('ts','<', Date.now()).get().then(s => s.docs.forEach(d => d.ref.delete()));
+  document.getElementById('sync-dot-login').classList.remove('off');
+  document.getElementById('sync-label-login').textContent = 'Firebase conectado ✓';
+}).catch(() => {
+  document.getElementById('sync-dot-login').classList.add('off');
+  document.getElementById('sync-label-login').textContent = 'Sem conexão';
+});
+
+// Auto-login
+const saved = localStorage.getItem('mc-current-user');
+if (saved) {
+  const users = getUsers();
+  const u = users.find(x => x.id === saved);
+  if (u) setTimeout(() => login(u.id), 100);
+}
+</script>
+</body>
+</html>
